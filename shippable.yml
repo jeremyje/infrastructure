@@ -1,0 +1,66 @@
+# Copyright 2020 Codecahedron Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# http://docs.shippable.com/provision/tutorial/provision-gcp-gke-gcloud/
+# http://docs.shippable.com/platform/workflow/config/
+resources:
+  # Declare where the repository lives.
+  - name: gcp_tf_repo
+    type: gitRepo
+    integration: "github"
+    versionTemplate:
+      sourceName: "codecahedron/infrastructure"
+      branch: "master"
+
+  - name: prov_gcp_creds
+    type: cliConfig
+    integration: "codecahedron-continuous-integration"
+    versionTemplate:
+      region: "us-west1"
+
+  - name: infrastructure_state_tf_state
+    type: state
+
+jobs:
+  - name: provision_infrastructure
+    type: runSh
+    steps:
+      - IN: prov_gcp_creds
+        switch: off
+      - TASK:
+          name: provision_state
+          script:
+            - pushd $(shipctl get_resource_state "gcp_tf_repo")
+            - export GOOGLE_APPLICATION_CREDENTIALS=$(shipctl get_integration_resource_field prov_gcp_creds "JSON_key")
+            - shipctl copy_file_from_resource_state infrastructure_state_tf_state terraform.tfstate .
+            - shipctl replace terraform.tfvars
+            - terraform init
+            - terraform apply -auto-approve -var-file=terraform.tfvars
+      - OUT: infrastructure_state_tf_state
+    always:
+      script:
+        - shipctl copy_file_to_resource_state terraform.tfstate infrastructure_state_tf_state
+        - popd
+
+env:
+  - ALLOW_BUILD_WITH_SUDO=1
+    REGISTRY=docker.io/codecahedron
+build:
+  pre_ci_boot:
+    image_name: codecahedron/builder
+    image_tag: 5211251ab0e233d4716ae8995f719a71ca4c8ef8
+    pull: false
+    options: "-e HOME=/root"
+  ci:
+    - make lint
