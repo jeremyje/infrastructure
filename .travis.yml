@@ -46,7 +46,9 @@ addons:
       - google-cloud-sdk
 
 before_install:
-  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then bash openssl aes-256-cbc -K $encrypted_7211d8add985_key -iv $encrypted_7211d8add985_iv -in robot-creds.json.enc -out robot-creds.json -d; fi'
+  - echo $encrypted_7211d8add985_key | wc
+  - echo $encrypted_7211d8add985_iv | wc
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then openssl aes-256-cbc -K $encrypted_7211d8add985_key -iv $encrypted_7211d8add985_iv -in robot-creds.json.enc -out robot-creds.json -d; fi'
 
 script:
   - make lint
