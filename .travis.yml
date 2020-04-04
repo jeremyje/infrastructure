@@ -1,0 +1,71 @@
+# Copyright 2020 Codecahedron Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+dist: bionic
+language: go
+
+matrix:
+  include:
+    - os: linux
+      go: "1.14"
+
+env:
+  global:
+    - GO111MODULE="on"
+    - TF_INPUT=false
+    - CLOUDSDK_CORE_DISABLE_PROMPTS=1
+    - GOOGLE_PROJECT_ID="gcp-codecahedron"
+    - GOOGLE_COMPUTE_ZONE="us-west1-a"
+    - GOOGLE_APPLICATION_CREDENTIALS="$TRAVIS_BUILD_DIR/robot_creds.json"
+    - secure: "O0oM7EjH3EwoAXafgjjG4Cn6QEOOuv4KRjep4rRsaglgDpG72H+wQVAPDfLNcWm5DKSwapUtfVYTo3aDUxndmEB3fONBj6RwF8gAaqT1c6ImcFzE6huv5pAUSm4CRyzeHUAakoj+JP47XvwpZ+mZ4x3QX8Dis/W0XdvC0jqiXZz5Ff+Q3X+fnnwty412P6WAW9CGDr7D0HlSgcyj0wOYWjfchuHIPjo5BGJEpwN3AvWhg2zg7CUbh8qSk3fjYbaYwj/z6K6WyU3JO442Yp7T3zXPyHLNZZrzdBijEQ5TvcsCeK0c3/sdUPRT22hZUTsf1ObjO5JiUX3Ez1qtyTiJVGz87Fa5tQ/Ss8WwGxu7L18Z0p1NCoAJMRQiCZkeiMGQc3ArPt+Gra/pyOW214LMxEA1hLFb/g9XUtSmYZGO0jIFdQYBf0FbQz3Z4sdDqm44QPVAAhuYa8T+4Cx06XSvahBHNP//AzZcenRgSQLIpwgHK4VMayS3+Ma+tVWoz0fK8PioY0+4RtEWlsEoB96KrKT/M1xQWwsYfKYGmg4mugjVvfnBDy4n6EpshB7PqNMd55Rxap1bFlMFbat29WNVghX5qHmaJTvcPZ4CQavPG5bXp6nIOBPNDXpzJMn9MjA1DX48ugf8m5GKWELWWxo/LwtyybMxnCkiwo0ZZ98b3hM="
+    - secure: "vVqRBdnb6C6Zutbjn0H5LrmSF34pV4iXXTliWRxUh91h5LFYxgPt+b9ZSOGYG93fo4KKJKiIYTuG451pSkWgYyT0x2O4sYet6ZnR4Dk29XyBlFV0zb84S1ZYr2Eb8vtgtvGFOXmaaxpLkbA21eo0Ac6mhF7gcWAuabcL65E6YA5CZVT1NZ7ZSsHEq6Ju0eSEDVfgKF6kbJoHtyy93VBJrp66ZJucqsltoLE96eDoZUIk6bFtRijAKwAi2ImSnuEV60SfhO6E0s+zm5KNoHncWMaLXVVcfSEuVgC4WWcsiNwJgAT1ShUYbeN38z7MPVEnUZCMLe6fxBpHdsk3qq9P515f6xdkwZAhYQ12p2qCAxM+awhOr9zFpQ4/l7jZj/UNWlcb+77ruEnSZ+bmdc6qEGh/rZYKWVqoh2nk4nhwvQr+jbpYUhMHPR9Gd07c75h1UyY37NTdegOau76xxd7F8gZWu507hdFnPy5He2olj+g788jWYev8UIPxwLvQjjV0ihf5nlXht/BEoT9HqNuUS8hEkCGAHqg2IcZm7T6a1wjBPKR6a6RyAnzDq45hJUl6U1BK9ZqoNvPI3+Q4TPdf3Vy1uWMi7vnYh+zCb81EeIuFt4XPtw46YTej4gMb8/g6q8YC71kQMEN0Hb6Syt3yAVIrUSHi73fF2IlKaXS/WY4="
+
+addons:
+  apt:
+    sources:
+      - sourceline: "deb [arch=amd64] http://packages.cloud.google.com/apt cloud-sdk-stretch main"
+        key_url: "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+    packages:
+      - pkg-config
+      - zip
+      - g++
+      - zlib1g-dev
+      - unzip
+      - python
+      - google-cloud-sdk
+
+before_install:
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then bash openssl aes-256-cbc -K $encrypted_7211d8add985_key -iv $encrypted_7211d8add985_iv -in robot-creds.json.enc -out robot-creds.json -d; fi'
+
+script:
+  - make lint
+
+after_success:
+  - cat $TRAVIS_BUILD_DIR/robot_creds.json | wc
+  - gcloud auth application-default login --client-id-file=$TRAVIS_BUILD_DIR/robot_creds.json --no-launch-browser
+  - gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
+  - gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
+  - gcloud auth list
+  - gcloud auth application-default print-access-token | wc
+  - echo "$DOCKER_HUB_USERNAME" | wc
+  - echo "$DOCKER_HUB_PASSWORD" | wc
+  - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+  - make terraform-plan
+
+deploy:
+- provider: script
+  skip_cleanup: true
+  script: make terraform-plan
+  on:
+    branch: master

@@ -12,14 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-env:
-  - ALLOW_BUILD_WITH_SUDO=1
-    REGISTRY=docker.io/codecahedron
-build:
-  pre_ci_boot:
-    image_name: codecahedron/builder
-    image_tag: 5211251ab0e233d4716ae8995f719a71ca4c8ef8
-    pull: false
-    options: "-e HOME=/root"
-  ci:
-    - make lint
+# http://docs.shippable.com/provision/tutorial/provision-gcp-gke-gcloud/
+# http://docs.shippable.com/platform/workflow/config/
+resources:
+  # Declare where the repository lives.
+  - name: gcp_tf_repo
+    type: gitRepo
+    integration: "github"
+    versionTemplate:
+      sourceName: "codecahedron/infrastructure"
+      branch: "master"
+
+  - name: prov_gcp_creds
+    type: cliConfig
+    integration: "codecahedron-continuous-integration"
+    versionTemplate:
+      region: "us-west1"
+
+  - name: infrastructure_state_tf_state
+    type: state

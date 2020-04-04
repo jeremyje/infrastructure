@@ -1,0 +1,36 @@
+# Copyright 2020 Codecahedron Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# http://docs.shippable.com/provision/tutorial/provision-gcp-gke-gcloud/
+# http://docs.shippable.com/platform/workflow/config/
+jobs:
+  - name: provision_infrastructure
+    type: runSh
+    steps:
+      - IN: prov_gcp_creds
+        switch: off
+      - TASK:
+          name: provision_state
+          script:
+            - pushd $(shipctl get_resource_state "gcp_tf_repo")
+            - export GOOGLE_APPLICATION_CREDENTIALS=$(shipctl get_integration_resource_field prov_gcp_creds "JSON_key")
+            - shipctl copy_file_from_resource_state infrastructure_state_tf_state terraform.tfstate .
+            - shipctl replace terraform.tfvars
+            - terraform init
+            - terraform apply -auto-approve -var-file=terraform.tfvars
+      - OUT: infrastructure_state_tf_state
+    always:
+      script:
+        - shipctl copy_file_to_resource_state terraform.tfstate infrastructure_state_tf_state
+        - popd

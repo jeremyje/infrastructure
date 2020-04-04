@@ -62,27 +62,12 @@ build/toolchain/bin/terraform$(EXE_EXTENSION): build/archives/terraform.zip
 	rm -rf $(TOOLCHAIN_DIR)/temp-terraform/
 	touch $@
 
-terraform-gcp-init: build/toolchain/bin/terraform$(EXE_EXTENSION)
-	cd $(REPOSITORY_ROOT)/install/terraform/google-cloud && $(TERRAFORM) init
-
-terraform-gcp-plan: build/toolchain/bin/terraform$(EXE_EXTENSION)
-	cd $(REPOSITORY_ROOT)/install/terraform/google-cloud && $(TERRAFORM) plan
-
-terraform-gcp-apply: build/toolchain/bin/terraform$(EXE_EXTENSION)
-	cd $(REPOSITORY_ROOT)/install/terraform/google-cloud && $(TERRAFORM) apply
-
-terraform-helm-init: build/toolchain/bin/terraform$(EXE_EXTENSION)
-	cd $(REPOSITORY_ROOT)/install/terraform/helm && $(TERRAFORM) init
-
-terraform-helm-plan: build/toolchain/bin/terraform$(EXE_EXTENSION)
-	cd $(REPOSITORY_ROOT)/install/terraform/helm && $(TERRAFORM) plan
-
-terraform-helm-apply: build/toolchain/bin/terraform$(EXE_EXTENSION)
-	cd $(REPOSITORY_ROOT)/install/terraform/helm && $(TERRAFORM) apply
+terraform-plan: build/toolchain/bin/terraform$(EXE_EXTENSION)
+	cd $(REPOSITORY_ROOT)/state && $(TERRAFORM) init
+	cd $(REPOSITORY_ROOT)/state && $(TERRAFORM) plan
 
 clean:
 	rm -f $(REPOSITORY_ROOT)/testdata/hashes.csv
 
 .SECONDARY:
-.PHONY: clean
-
+.PHONY: bootstrap lint clean install-toolchain terraform-plan

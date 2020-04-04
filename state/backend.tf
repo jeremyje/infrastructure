@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-env:
-  - ALLOW_BUILD_WITH_SUDO=1
-    REGISTRY=docker.io/codecahedron
-build:
-  pre_ci_boot:
-    image_name: codecahedron/builder
-    image_tag: 5211251ab0e233d4716ae8995f719a71ca4c8ef8
-    pull: false
-    options: "-e HOME=/root"
-  ci:
-    - make lint
+terraform {
+  backend "gcs" {
+    bucket = "codecahedron-terraform"
+    prefix = "terraform/state"
+  }
+}
